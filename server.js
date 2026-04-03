@@ -67,10 +67,7 @@ async function startSock() {
       if (shouldReconnect) {
         setTimeout(startSock, 3000)
       } else {
-        console.log('Logged out — delete session and restart to re-scan QR')
-        // Clear session so fresh QR is shown on next restart
-        fs.rmSync(SESSION_DIR, { recursive: true, force: true })
-        fs.mkdirSync(SESSION_DIR, { recursive: true })
+        console.log('Logged out — keeping session intact, restarting socket')
         setTimeout(startSock, 3000)
       }
     }

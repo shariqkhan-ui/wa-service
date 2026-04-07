@@ -55,6 +55,8 @@ async function startSock() {
       console.log('WhatsApp connected ✓')
       isConnected = true
       qrCodeData = null
+      // Set profile name to Wiom
+      try { await sock.updateProfileName('Wiom') } catch (e) { console.log('Profile name update skipped:', e.message) }
     }
 
     if (connection === 'close') {
@@ -134,6 +136,19 @@ app.post('/send', requireApiKey, async (req, res) => {
   } catch (err) {
     console.error('Send error:', err)
     res.status(500).json({ error: 'Failed to send message', detail: String(err) })
+  }
+})
+
+// Update profile display name (protected)
+app.post('/set-name', requireApiKey, async (req, res) => {
+  const { name } = req.body
+  if (!name) return res.status(400).json({ error: 'name is required' })
+  if (!isConnected || !sock) return res.status(503).json({ error: 'WhatsApp not connected' })
+  try {
+    await sock.updateProfileName(name)
+    res.json({ success: true, name })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update name', detail: String(err) })
   }
 })
 

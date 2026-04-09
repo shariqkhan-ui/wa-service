@@ -109,7 +109,7 @@ app.get('/qr', (req, res) => {
         </style>
       </head>
       <body>
-        <h2>Scan with WhatsApp on the new number</h2>
+        <h2>Scan with WhatsApp (9289448810)</h2>
         <img src="${qrCodeData}" />
         <p>Open WhatsApp → Linked Devices → Link a Device → Scan</p>
         <p>Page auto-refreshes every 30s</p>

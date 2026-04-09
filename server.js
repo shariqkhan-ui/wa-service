@@ -61,17 +61,21 @@ async function startSock() {
 
     if (connection === 'close') {
       isConnected = false
-      const shouldReconnect = lastDisconnect?.error instanceof Boom
-        ? lastDisconnect.error.output?.statusCode !== DisconnectReason.loggedOut
-        : true
+      const loggedOut = lastDisconnect?.error instanceof Boom &&
+        lastDisconnect.error.output?.statusCode === DisconnectReason.loggedOut
 
-      console.log('WhatsApp disconnected. Reconnecting:', shouldReconnect)
-      if (shouldReconnect) {
-        setTimeout(startSock, 3000)
-      } else {
-        console.log('Logged out — keeping session intact, restarting socket')
-        setTimeout(startSock, 3000)
+      console.log('WhatsApp disconnected. loggedOut:', loggedOut)
+      if (loggedOut) {
+        // Wipe session so a fresh QR is generated for a new number
+        try {
+          fs.rmSync(SESSION_DIR, { recursive: true, force: true })
+          fs.mkdirSync(SESSION_DIR, { recursive: true })
+          console.log('Session cleared after logout')
+        } catch (e) {
+          console.error('Failed to clear session:', e)
+        }
       }
+      setTimeout(startSock, 3000)
     }
   })
 }
@@ -105,7 +109,7 @@ app.get('/qr', (req, res) => {
         </style>
       </head>
       <body>
-        <h2>Scan with WhatsApp (9354720141)</h2>
+        <h2>Scan with WhatsApp on the new number</h2>
         <img src="${qrCodeData}" />
         <p>Open WhatsApp → Linked Devices → Link a Device → Scan</p>
         <p>Page auto-refreshes every 30s</p>
@@ -136,6 +140,27 @@ app.post('/send', requireApiKey, async (req, res) => {
   } catch (err) {
     console.error('Send error:', err)
     res.status(500).json({ error: 'Failed to send message', detail: String(err) })
+  }
+})
+
+// Logout — end session and wipe creds so a new number can be linked (protected)
+app.post('/logout', requireApiKey, async (req, res) => {
+  try {
+    if (sock) {
+      try { await sock.logout() } catch (e) { console.log('sock.logout error (ignored):', e.message) }
+    }
+    isConnected = false
+    qrCodeData = null
+    try {
+      fs.rmSync(SESSION_DIR, { recursive: true, force: true })
+      fs.mkdirSync(SESSION_DIR, { recursive: true })
+    } catch (e) {
+      console.error('Session wipe failed:', e)
+    }
+    setTimeout(startSock, 1500)
+    res.json({ success: true, message: 'Logged out. Visit /qr to scan a new number.' })
+  } catch (err) {
+    res.status(500).json({ error: 'Logout failed', detail: String(err) })
   }
 })
 
